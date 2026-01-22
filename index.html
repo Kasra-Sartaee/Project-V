@@ -1,105 +1,612 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>root@heart:~</title>
-    <style>
-        body { 
-            background-color: #0d0d0d; 
-            color: #00ff41; 
-            font-family: 'Courier New', monospace; 
-            padding: 2rem; 
-            overflow: hidden;
-        }
-        #console { white-space: pre-wrap; font-size: 1.2rem; line-height: 1.5; }
-        .cursor { animation: blink 1s step-end infinite; }
-        @keyframes blink { 50% { opacity: 0; } }
-        .hidden { display: none; }
-        .input-line { margin-top: 10px; display: flex; align-items: center;}
-        .prompt { white-space: pre; }
-        input { 
-            background: transparent; border: none; color: #00ff41; 
-            font-family: inherit; font-size: 1.2rem; outline: none; flex-grow: 1;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>root@heart:~</title>
+  <style>
+    :root{
+      --bg:#0b0b0b;
+      --green:#00ff41;
+      --green-dim: rgba(0,255,65,.55);
+      --pink:#ff4fd8;
+      --red:#ff2d55;
+    }
+
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 700px at 50% 20%, rgba(0,255,65,.08), transparent 60%),
+                  linear-gradient(180deg, #050505, var(--bg));
+      color: var(--green);
+      font-family: "Courier New", monospace;
+      padding: 24px;
+      overflow: hidden;
+      transition: background-color 0.2s;
+    }
+
+    /* GLITCH SHAKE EFFECT */
+    @keyframes shake {
+      0% { transform: translate(1px, 1px) rotate(0deg); }
+      10% { transform: translate(-1px, -2px) rotate(-1deg); }
+      20% { transform: translate(-3px, 0px) rotate(1deg); }
+      30% { transform: translate(3px, 2px) rotate(0deg); }
+      40% { transform: translate(1px, -1px) rotate(1deg); }
+      50% { transform: translate(-1px, 2px) rotate(-1deg); }
+      60% { transform: translate(-3px, 1px) rotate(0deg); }
+      70% { transform: translate(3px, 1px) rotate(-1deg); }
+      80% { transform: translate(-1px, -1px) rotate(1deg); }
+      90% { transform: translate(1px, 2px) rotate(0deg); }
+      100% { transform: translate(1px, -2px) rotate(-1deg); }
+    }
+    body.glitch {
+      animation: shake 0.5s;
+      animation-iteration-count: 1;
+      background-color: #220000;
+    }
+
+    #wrap{
+      max-width: 900px;
+      margin: 0 auto;
+      height: calc(100vh - 48px);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    #console {
+      flex: 1;
+      white-space: pre-wrap;
+      font-size: 1.1rem;
+      line-height: 1.55;
+      overflow: auto;
+      padding: 18px 18px 14px;
+      border: 1px solid rgba(0,255,65,.25);
+      border-radius: 14px;
+      background: rgba(0,0,0,.65);
+      box-shadow: 0 0 28px rgba(0,255,65,.12);
+      text-shadow: 0 0 10px rgba(0,255,65,.15);
+    }
+
+    #console::-webkit-scrollbar { width: 10px; }
+    #console::-webkit-scrollbar-thumb { background: rgba(0,255,65,.18); border-radius: 999px; }
+    #console::-webkit-scrollbar-track { background: rgba(0,0,0,.25); }
+
+    .muted { color: var(--green-dim); }
+    .pink { color: var(--pink); text-shadow: 0 0 8px var(--pink); }
+    .red  { color: var(--red);  text-shadow: 0 0 8px var(--red); }
+    .ok   { color: #6cff8a; }
+    .warn { color: #ffe066; }
+
+    .cursor {
+      display: inline-block;
+      width: 10px;
+      animation: blink 1s step-end infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    #input-area {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 14px;
+      border: 1px solid rgba(0,255,65,.25);
+      border-radius: 14px;
+      background: rgba(0,0,0,.35);
+      box-shadow: 0 0 22px rgba(0,255,65,.10);
+    }
+    #prompt { white-space: pre; }
+    input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      outline: none;
+      color: var(--green);
+      font-family: inherit;
+      font-size: 1.05rem;
+      caret-color: var(--green);
+      text-shadow: 0 0 10px rgba(0,255,65,.15);
+    }
+
+    /* Hearts rain canvas (only on YES) */
+    #rain {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity .6s ease;
+      z-index: 999;
+    }
+    #rain.show { opacity: 1; }
+
+    /* Tiny toast */
+    #toast{
+      position: fixed;
+      left: 50%;
+      bottom: 18px;
+      transform: translateX(-50%);
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,79,216,.35);
+      background: rgba(0,0,0,.85);
+      color: rgba(255,79,216,.95);
+      font-size: .95rem;
+      opacity: 0;
+      transition: opacity .25s ease, transform .25s ease;
+      pointer-events: none;
+      z-index: 1000;
+    }
+    #toast.show{
+      opacity: 1;
+      transform: translateX(-50%) translateY(-6px);
+    }
+
+    @media (max-width: 520px){
+      body{ padding: 16px; }
+      #wrap{ height: calc(100vh - 32px); }
+      #console{ font-size: 1rem; }
+    }
+  </style>
 </head>
 <body>
+  <canvas id="rain"></canvas>
+
+  <div id="wrap">
     <div id="console"></div>
-    <div id="input-area" class="input-line hidden">
-        <span class="prompt">root@kasra:~$ </span>
-        <input type="text" id="commandInput" autofocus autocomplete="off">
+
+    <div id="input-area" aria-label="terminal input">
+      <span id="prompt">root@kasra:~$</span>
+      <input type="text" id="commandInput" autocomplete="off" spellcheck="false" />
     </div>
+  </div>
 
-    <script>
-        // --- CONFIGURATION-------------------------------
-        const lines = [
-            "Initializing romance_protocol v2.0...",
-            "Loading user database...",
-            "Searching for: Girlfriend...",
-            "Target Found: Catcout", 
-            "Analyzing shared interests...",
-            "> Turkish Dramas... DETECTED.", 
-            "> Beard preferences... OPTIMAL.",
-            "> Compatibility score: 100%.",
-            "----------------------------------------",
-            "System Query: Will you be my Valentine? (Y/n)"
-        ];
-        // ----------------------------------------
+  <div id="toast">Tip: type <span class="pink">help</span></div>
 
-        let lineIndex = 0;
-        let charIndex = 0;
-        const consoleDiv = document.getElementById('console');
-        const inputArea = document.getElementById('input-area');
+  <script>
+    // =======================
+    // Terminal Romance OS v3.1 (Design + Glitch merge)
+    // =======================
 
-        function typeWriter() {
-            if (lineIndex < lines.length) {
-                const currentLine = lines[lineIndex];
-                
-                // Add new line prompt if starting a new line
-                if (charIndex === 0) {
-                     const prompt = (lineIndex === lines.length - 1) ? "" : "> ";
-                     consoleDiv.innerHTML += (lineIndex > 0 ? "\n" : "") + prompt;
-                }
+    const consoleDiv = document.getElementById("console");
+    const input = document.getElementById("commandInput");
+    const toast = document.getElementById("toast");
 
-                // Type character
-                consoleDiv.innerHTML += currentLine.charAt(charIndex);
-                charIndex++;
+    const state = {
+      booted: false,
+      asked: false,
+      accepted: false,
+      triesNo: 0,
+      miniGameDone: false
+    };
 
-                if (charIndex < currentLine.length) {
-                    setTimeout(typeWriter, 40); // Typing speed
-                } else {
-                    charIndex = 0;
-                    lineIndex++;
-                    setTimeout(typeWriter, 600); // Pause between lines
-                }
-            } else {
-                inputArea.classList.remove('hidden');
-                const input = document.getElementById('commandInput');
-                input.focus();
-                
-                // Keep focus on input if user clicks away
-                document.body.addEventListener('click', () => input.focus());
-            }
+    const bootLines = [
+      "<span class='muted'>[boot]</span> Initializing <span class='pink'>romance_protocol</span> v3.1...",
+      "<span class='muted'>[boot]</span> Loading user database...",
+      "<span class='muted'>[boot]</span> Searching for: <span class='pink'>Girlfriend</span> ...",
+      "<span class='muted'>[ok]</span> Target found: <span class='pink'>Catcout</span>",
+      "<span class='muted'>[scan]</span> Analyzing shared interests...",
+      "  - Turkish dramas .......... <span class='ok'>DETECTED</span>",
+      "  - Beard preferences ....... <span class='ok'>OPTIMAL</span>",
+      "  - Cute aggression ......... <span class='ok'>OFF THE CHARTS</span>",
+      "  - Compatibility score ..... <span class='ok'>100%</span>",
+      "",
+      "<span class='muted'>Type</span> <span class='pink'>help</span> <span class='muted'>for commands.</span>",
+      "<span class='muted'>Type</span> <span class='pink'>sudo valentine</span> <span class='muted'>to continue.</span>"
+    ];
+
+    const files = {
+      "love_letter.txt": [
+        "Dear Catcout,",
+        "",
+        "I ran every test I know.",
+        "Same result every time.",
+        "",
+        "You make the world feel safer, softer, and funnier.",
+        "I like you. A lot.",
+        "",
+        "Will you be my Valentine?",
+        "",
+        "<span class='muted'>(Type: <span class='pink'>yes</span>)</span>"
+      ].join("\n")
+    };
+
+    const helpText = [
+      "<span class='muted'>Available commands:</span>",
+      "  <span class='pink'>help</span>                 show this help",
+      "  <span class='pink'>ls</span>                   list files",
+      "  <span class='pink'>cat love_letter.txt</span>  read the letter",
+      "  <span class='pink'>sudo valentine</span>       run the proposal flow",
+      "  <span class='pink'>play</span>                 tiny mini-game",
+      "  <span class='pink'>yes</span>                  accept (recommended)",
+      "  <span class='pink'>no</span>                   reject (risky)",
+      "",
+      "<span class='muted'>Easter eggs:</span> try <span class='pink'>catcout</span> or <span class='pink'>turkish</span>"
+    ].join("\n");
+
+    function scrollToBottom(){
+      consoleDiv.scrollTop = consoleDiv.scrollHeight;
+    }
+    function resetAll({ keepConsole = false } = {}) {
+  // stop rain and clear canvas
+  rainOn = false;
+  rainCanvas.classList.remove("show");
+  rctx.clearRect(0, 0, rainCanvas.width, rainCanvas.height);
+
+  // remove any confetti hearts still in DOM (we tag them below)
+  document.querySelectorAll(".confetti-heart").forEach((el) => el.remove());
+
+  // reset glitch state just in case
+  document.body.classList.remove("glitch");
+
+  // reset state so flows can be used again
+  state.asked = false;
+  state.accepted = false;
+  state.triesNo = 0;
+  state.miniGameDone = false;
+
+  if (!keepConsole) {
+    consoleDiv.innerHTML = "";
+    lineIndex = 0; // if you have any boot typing indices, ignore this line if not present
+  }
+
+  printLine("<span class='muted'>[sys]</span> Reset complete. You can run <span class='pink'>sudo valentine</span> again.");
+}
+
+    function printLine(html){
+      consoleDiv.innerHTML += (consoleDiv.innerHTML ? "\n" : "") + html;
+      scrollToBottom();
+    }
+
+    function sleep(ms){ return new Promise(r => setTimeout(r, ms)); }
+
+    async function typeLines(lines, speed = 16, linePause = 280){
+      for (const line of lines){
+        await typeOneLine(line, speed);
+        await sleep(linePause);
+      }
+    }
+
+    async function typeOneLine(html, speed = 16){
+      const tokens = html.split(/(<[^>]+>)/g).filter(Boolean);
+      let out = "";
+
+      for (const tok of tokens){
+        if (tok.startsWith("<")){
+          out += tok;
+          render(out);
+          continue;
         }
+        for (let i = 0; i < tok.length; i++){
+          out += tok[i];
+          render(out);
+          await sleep(speed);
+        }
+      }
 
-        document.getElementById('commandInput').addEventListener('keypress', function (e) {
-            if (e.key === 'Enter') {
-                const val = this.value.trim().toLowerCase();
-                if (val === 'y' || val === 'yes') {
-                    consoleDiv.innerHTML += `\n\n> ACCESS GRANTED. \n> INITIATING DATE NIGHT...`;
-                    this.disabled = true;
-                } else {
-                    // Funny error message if she types something else
-                    consoleDiv.innerHTML += `\n\n> ERROR: OPTION "${this.value}" NOT VALID.\n> PLEASE TYPE 'Y'.`;
-                    this.value = '';
-                    // Scroll to bottom
-                    window.scrollTo(0, document.body.scrollHeight);
-                }
-            }
-        });
+      function render(current){
+        const existing = consoleDiv.innerHTML ? consoleDiv.innerHTML + "\n" : "";
+        consoleDiv.innerHTML = existing + current;
+        scrollToBottom();
+      }
+    }
 
-        window.onload = typeWriter;
-    </script>
+    function showToast(){
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2200);
+    }
+
+    // Loading bar (used for sudo valentine)
+    async function printLoadingBar(label){
+      printLine(`<span class='muted'>[sys]</span> ${label}`);
+      let bar = "";
+      for (let i = 0; i < 18; i++){
+        await sleep(45);
+        bar += "█";
+        // overwrite last line by reprinting an updating line
+        // simple approach: print a new line occasionally is messy, so we update via innerHTML slice
+        const marker = "__LOADING_BAR__";
+        if (!consoleDiv.innerHTML.includes(marker)){
+          consoleDiv.innerHTML += `\n<span class='pink'>${marker}</span>`;
+        }
+        consoleDiv.innerHTML = consoleDiv.innerHTML.replace(
+          new RegExp(`<span class='pink'>${marker}<\/span>`, "g"),
+          `<span class='pink'>[${bar.padEnd(18," ")}]</span>`
+        );
+        scrollToBottom();
+      }
+      printLine("<span class='ok'>DONE</span>");
+    }
+
+    // -------- Mini Game
+    async function miniGame(){
+      printLine("<span class='muted'>[game]</span> Mini-game: unlock with a 3-letter code.");
+      printLine("<span class='muted'>Hint:</span> it starts with <span class='pink'>I</span> and ends with <span class='pink'>Y</span>.");
+      printLine("<span class='muted'>Type:</span> <span class='pink'>unlock ___</span>");
+      state.miniGameDone = false;
+    }
+
+    function handleUnlock(cmd){
+      const attempt = cmd.slice("unlock".length).trim().toLowerCase();
+      if (!attempt){
+        printLine("<span class='warn'>Usage:</span> unlock ily");
+        return;
+      }
+      if (attempt === "ily"){
+        state.miniGameDone = true;
+        printLine("<span class='ok'>UNLOCKED.</span> You are officially too cute for security.");
+        printLine("<span class='muted'>Now run:</span> <span class='pink'>cat love_letter.txt</span>");
+      } else {
+        printLine(`<span class='red'>ACCESS DENIED.</span> '${escapeHtml(attempt)}' is not the code. Try again.`);
+      }
+    }
+
+    function escapeHtml(str){
+      return str.replace(/[&<>"']/g, m => ({
+        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"
+      }[m]));
+    }
+
+    // -------- YES flow (REMOTE EDIT APPLIED)
+    function accept(){
+      if (state.accepted) return;
+      state.accepted = true;
+
+      printLine("");
+      printLine("<span class='ok'>ACCESS GRANTED.</span> Permission: <span class='pink'>hold_hand</span> = true (remote sync)");
+      printLine("<span class='muted'>Initiating date_night...</span>");
+      printLine("");
+      printLine("Plan (Remote Mode Enabled):");
+      printLine("  1) <span class='pink'>Video call</span> (mandatory. camera optional but encouraged)");
+      printLine("  2) <span class='pink'>Same food</span> (synchronized eating protocol)");
+      printLine("  3) <span class='pink'>A Turkish drama episode</span> (live commentary enabled)");
+      printLine("  4) <span class='pink'>Dessert</span> (still mandatory)");
+      printLine("  5) <span class='pink'>Goodnight call</span> (may exceed safe time limits)");
+      printLine("");
+      printLine("<span class='muted'>Distance detected.</span> <span class='ok'>Connection remains strong.</span>");
+      printLine("<span class='pink'>Happy Valentine’s, Catcout.</span> <span class='red'>♥</span>");
+
+      heartRain(true);
+      burstConfettiHearts();
+      beep(2);
+    }
+
+    // -------- NO flow (funny + GLITCH)
+    async function reject(){
+      state.triesNo++;
+
+      document.body.classList.add("glitch");
+      setTimeout(() => document.body.classList.remove("glitch"), 500);
+
+      if (state.triesNo === 1){
+        printLine("<span class='red'>ERROR:</span> command 'no' requires confirmation.");
+        printLine("<span class='muted'>Type:</span> <span class='pink'>no --i-am-sure</span>");
+        return;
+      }
+
+      printLine("<span class='red'>FATAL:</span> heartbreak_exception thrown.");
+      printLine("<span class='muted'>Attempting recovery...</span>");
+      await sleep(450);
+      printLine("<span class='ok'>RECOVERED.</span> Just kidding. Try <span class='pink'>yes</span>.");
+      beep(1);
+    }
+
+    // -------- Command handler
+    async function runCommand(raw){
+      const cmd = raw.trim();
+      if (!cmd) return;
+
+      printLine(`<span class='muted'>root@kasra:~$</span> ${escapeHtml(cmd)}`);
+      const lower = cmd.toLowerCase();
+
+      if (lower === "catcout"){
+        printLine("<span class='pink'>Catcout detected.</span> Heart rate increased. System stable.");
+        return;
+      }
+      if (lower === "turkish"){
+        printLine("Loading Turkish drama mode...");
+        printLine("<span class='muted'>Warning:</span> emotional damage may occur. Bring snacks.");
+        return;
+      }
+
+      if (lower === "help"){
+        printLine(helpText);
+        return;
+      }
+
+      if (lower === "ls"){
+        printLine(Object.keys(files).map(f => `  ${f}`).join("\n"));
+        return;
+      }
+
+      if (lower.startsWith("cat ")){
+        const name = lower.slice(4).trim();
+        if (!files[name]){
+          printLine(`<span class='red'>cat:</span> ${escapeHtml(name)}: No such file`);
+          return;
+        }
+        if (!state.miniGameDone){
+          printLine("<span class='warn'>Permission denied.</span> Complete the mini-game first: <span class='pink'>play</span>");
+          return;
+        }
+        printLine(files[name]);
+        state.asked = true;
+        return;
+      }
+
+      if (lower === "play"){
+        await miniGame();
+        return;
+      }
+      if (lower === "clear" || lower === "cls") {
+        resetAll({ keepConsole: true });
+        return;
+    }
+      if (lower.startsWith("unlock")){
+        handleUnlock(cmd);
+        return;
+      }
+
+      if (lower === "sudo valentine"){
+        await printLoadingBar("Initializing proposal modules");
+        printLine("<span class='muted'>[sudo]</span> password for root: <span class='muted'>(hint: you)</span>");
+        printLine("<span class='muted'>Type:</span> <span class='pink'>unlock ily</span>");
+        return;
+      }
+
+      if (lower === "yes" || lower === "y"){
+        accept();
+        return;
+      }
+
+      if (lower === "no" || lower.startsWith("no --")){
+        if (lower === "no") await reject();
+        else if (lower === "no --i-am-sure") await reject();
+        else printLine("<span class='red'>ERROR:</span> unknown flag. Try: <span class='pink'>no --i-am-sure</span>");
+        return;
+      }
+
+      if (state.asked && !state.accepted){
+        printLine(`<span class='red'>ERROR:</span> invalid option '${escapeHtml(cmd)}'. Try <span class='pink'>yes</span>.`);
+        return;
+      }
+
+      printLine(`<span class='red'>command not found:</span> ${escapeHtml(cmd)}. Try <span class='pink'>help</span>.`);
+    }
+
+    // -------- Cute effects (YES)
+    function beep(times = 1){
+      try{
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        let t = ctx.currentTime;
+        for (let i=0;i<times;i++){
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = "square";
+          o.frequency.value = 880 - i*120;
+          g.gain.setValueAtTime(0.03, t);
+          g.gain.exponentialRampToValueAtTime(0.0001, t + 0.12);
+          o.connect(g); g.connect(ctx.destination);
+          o.start(t);
+          o.stop(t + 0.12);
+          t += 0.16;
+        }
+      } catch {}
+    }
+
+    function burstConfettiHearts(){
+      const n = 26;
+      for (let i = 0; i < n; i++){
+        const el = document.createElement("div");
+        el.classList.add("confetti-heart");
+        el.textContent = Math.random() < 0.6 ? "♥" : "♡";
+        el.style.position = "fixed";
+        el.style.left = (window.innerWidth * 0.5 + (Math.random() - 0.5) * 220) + "px";
+        el.style.top = (window.innerHeight * 0.55 + (Math.random() - 0.5) * 80) + "px";
+        el.style.fontFamily = "Courier New, monospace";
+        el.style.fontSize = (14 + Math.random() * 18) + "px";
+        el.style.color = Math.random() < 0.5 ? "rgba(255,79,216,.95)" : "rgba(0,255,65,.9)";
+        el.style.pointerEvents = "none";
+        el.style.filter = "drop-shadow(0 0 10px rgba(255,79,216,.18))";
+        el.style.zIndex = 2000;
+        document.body.appendChild(el);
+
+        const dx = (Math.random() - 0.5) * 360;
+        const dy = - (140 + Math.random() * 240);
+        const rot = (Math.random() - 0.5) * 360;
+
+        el.animate([
+          { transform: "translate(0,0) rotate(0deg)", opacity: 1 },
+          { transform: `translate(${dx}px, ${dy}px) rotate(${rot}deg)`, opacity: 0 }
+        ], { duration: 1200 + Math.random() * 600, easing: "cubic-bezier(.2,.8,.2,1)" })
+        .onfinish = () => el.remove();
+      }
+    }
+
+    // Matrix-like heart rain (tokens updated)
+    const rainCanvas = document.getElementById("rain");
+    const rctx = rainCanvas.getContext("2d");
+    let rainOn = false;
+    let drops = [];
+    const chars = ["♥","♡","❥","ily","kas","cat","*","+"];
+    function resizeRain(){
+      rainCanvas.width = window.innerWidth;
+      rainCanvas.height = window.innerHeight;
+      const cols = Math.floor(rainCanvas.width / 18);
+      drops = new Array(cols).fill(1);
+    }
+    window.addEventListener("resize", resizeRain);
+
+    function heartRain(on){
+      rainOn = on;
+      rainCanvas.classList.toggle("show", on);
+      if (on){
+        resizeRain();
+        requestAnimationFrame(rainTick);
+      }
+    }
+
+    function rainTick(){
+      if (!rainOn) return;
+      rctx.fillStyle = "rgba(0,0,0,0.06)";
+      rctx.fillRect(0,0,rainCanvas.width,rainCanvas.height);
+
+      rctx.font = "16px Courier New, monospace";
+      for (let i = 0; i < drops.length; i++){
+        const text = chars[Math.floor(Math.random()*chars.length)];
+        const x = i * 18;
+        const y = drops[i] * 18;
+
+        rctx.fillStyle = Math.random() < 0.25 ? "rgba(255,79,216,.75)" : "rgba(0,255,65,.55)";
+        rctx.fillText(text, x, y);
+
+        if (y > rainCanvas.height && Math.random() > 0.975) drops[i] = 0;
+        drops[i]++;
+      }
+
+      requestAnimationFrame(rainTick);
+    }
+    document.addEventListener("keydown", (e) => {
+    // Ctrl+C to cancel effects and reset state
+    if (e.ctrlKey && (e.key === "c" || e.key === "C")) {
+        e.preventDefault();
+        resetAll({ keepConsole: true }); // keep console text, just reset effects + state
+        return;
+    }
+
+    // Ctrl+L to clear the screen like a terminal
+    if (e.ctrlKey && (e.key === "l" || e.key === "L")) {
+        e.preventDefault();
+        resetAll({ keepConsole: false }); // clears console too
+        return;
+    }
+    });
+
+    // -------- Boot sequence
+    async function boot(){
+      if (state.booted) return;
+      state.booted = true;
+
+      showToast();
+      await typeLines(bootLines, 14, 240);
+      printLine("");
+      printLine("<span class='muted'>Pro tip:</span> run <span class='pink'>play</span> then <span class='pink'>cat love_letter.txt</span>");
+      printLine("<span class='muted'>Or skip to:</span> <span class='pink'>sudo valentine</span>");
+      printLine("");
+      printLine("<span class='cursor'>█</span>");
+      input.focus();
+    }
+
+    input.addEventListener("keydown", async (e) => {
+      if (e.key === "Enter"){
+        const cmd = input.value;
+        input.value = "";
+        await runCommand(cmd);
+      }
+    });
+
+    document.body.addEventListener("click", () => input.focus());
+
+    boot();
+  </script>
 </body>
 </html>
