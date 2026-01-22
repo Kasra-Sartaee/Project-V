@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>root@heart:~</title>
+    <style>
+        body { 
+            background-color: #0d0d0d; 
+            color: #00ff41; 
+            font-family: 'Courier New', monospace; 
+            padding: 2rem; 
+            overflow: hidden;
+        }
+        #console { white-space: pre-wrap; font-size: 1.2rem; line-height: 1.5; }
+        .cursor { animation: blink 1s step-end infinite; }
+        @keyframes blink { 50% { opacity: 0; } }
+        .hidden { display: none; }
+        .input-line { margin-top: 10px; display: flex; align-items: center;}
+        .prompt { white-space: pre; }
+        input { 
+            background: transparent; border: none; color: #00ff41; 
+            font-family: inherit; font-size: 1.2rem; outline: none; flex-grow: 1;
+        }
+    </style>
+</head>
+<body>
+    <div id="console"></div>
+    <div id="input-area" class="input-line hidden">
+        <span class="prompt">root@kasra:~$ </span>
+        <input type="text" id="commandInput" autofocus autocomplete="off">
+    </div>
+
+    <script>
+        // --- CONFIGURATION-------------------------------
+        const lines = [
+            "Initializing romance_protocol v2.0...",
+            "Loading user database...",
+            "Searching for: Girlfriend...",
+            "Target Found: Catcout", 
+            "Analyzing shared interests...",
+            "> Turkish Dramas... DETECTED.", 
+            "> Beard preferences... OPTIMAL.",
+            "> Compatibility score: 100%.",
+            "----------------------------------------",
+            "System Query: Will you be my Valentine? (Y/n)"
+        ];
+        // ----------------------------------------
+
+        let lineIndex = 0;
+        let charIndex = 0;
+        const consoleDiv = document.getElementById('console');
+        const inputArea = document.getElementById('input-area');
+
+        function typeWriter() {
+            if (lineIndex < lines.length) {
+                const currentLine = lines[lineIndex];
+                
+                // Add new line prompt if starting a new line
+                if (charIndex === 0) {
+                     const prompt = (lineIndex === lines.length - 1) ? "" : "> ";
+                     consoleDiv.innerHTML += (lineIndex > 0 ? "\n" : "") + prompt;
+                }
+
+                // Type character
+                consoleDiv.innerHTML += currentLine.charAt(charIndex);
+                charIndex++;
+
+                if (charIndex < currentLine.length) {
+                    setTimeout(typeWriter, 40); // Typing speed
+                } else {
+                    charIndex = 0;
+                    lineIndex++;
+                    setTimeout(typeWriter, 600); // Pause between lines
+                }
+            } else {
+                inputArea.classList.remove('hidden');
+                const input = document.getElementById('commandInput');
+                input.focus();
+                
+                // Keep focus on input if user clicks away
+                document.body.addEventListener('click', () => input.focus());
+            }
+        }
+
+        document.getElementById('commandInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') {
+                const val = this.value.trim().toLowerCase();
+                if (val === 'y' || val === 'yes') {
+                    consoleDiv.innerHTML += `\n\n> ACCESS GRANTED. \n> INITIATING DATE NIGHT...`;
+                    this.disabled = true;
+                } else {
+                    // Funny error message if she types something else
+                    consoleDiv.innerHTML += `\n\n> ERROR: OPTION "${this.value}" NOT VALID.\n> PLEASE TYPE 'Y'.`;
+                    this.value = '';
+                    // Scroll to bottom
+                    window.scrollTo(0, document.body.scrollHeight);
+                }
+            }
+        });
+
+        window.onload = typeWriter;
+    </script>
+</body>
+</html>
